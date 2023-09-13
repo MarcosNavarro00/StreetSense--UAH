@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="brain.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    
+    <script type="module">
+    
+    // Import the functions you need from the SDKs you need
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.14.0/firebase-app.js";
+    // TODO: Add SDKs for Firebase products that you want to use
+    // https://firebase.google.com/docs/web/setup#available-libraries
+      
+    // Your web app's Firebase configuration
+    const firebaseConfig = {
+        apiKey: "AIzaSyAaua17IgfeQY6Ji7svpyCofhWc-oecwqI",
+        authDomain: "basededatos-f1968.firebaseapp.com",
+        databaseURL: "https://basededatos-f1968-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "basededatos-f1968",
+        storageBucket: "basededatos-f1968.appspot.com",
+        messagingSenderId: "558794073723",
+        appId: "1:558794073723:web:0490583584bf5ce831e4de",
+        measurementId: "G-80G882XZZB"
+    };
+      
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+        
+    // Introducir las funciones para editar la base de datos
+    import { getAuth } from 'https://www.gstatic.com/firebasejs/9.14.0/firebase-auth.js'
+    import { getFirestore } from 'https://www.gstatic.com/firebasejs/9.14.0/firebase-firestore.js'
+    import {getDatabase, ref, set,get, child, update, remove, onValue,  orderByChild, DataSnapshot, query, equalTo} from "https://www.gstatic.com/firebasejs/9.14.0/firebase-database.js";
+        
+    //conexion a la database
+    const db = getDatabase();
+
+    var nodos = []
+    var nodosP = [];
+    var nodosS = []
+    var dias = [];
+    var IDs = [];
+
+    var resultadosSemanaP = []
+    var resultadoP 
+    var resultadosS= []
+    var fechaActual = new Date();
+
+    var resultadoSTramo1 = []
+    var resultadosSemanalSTramo1 =[]
+
+    var resultadoSTramo2 = []
+    var resultadosSemanalSTramo2 =[]
+
+    var fechaActual = new Date();
+    var hoy = fechaActual.getDate();
+
+    var contadorPeatonesDia = {};
+    var contadorCochesDiaT2 = {};
+    var contadorCochesDiaT1 = {};
+
+    
+
+    console.log("dia actual",hoy);
+//---------------------------------------------funcion numeros ramdom---------------------------------------------------------------
+    function NumerosAleatorios(min, max) {
+        return Math.round(Math.random() * (max - min) + min);
+    }
+   
+
+//--------------------------------------------SELECCION DEL TODOS LOS DATOS DEL NODO PEATONES--------------------------------------
+    function selectP(ruta){
+        const db = getDatabase();
+        const dbRef = ref(db, ruta);
+        return new Promise((resolve, reject) => {
+            onValue(dbRef, (snapshot) => {
+                snapshot.forEach((childSnapshot) => {
+                    
+                    var dataP = childSnapshot.val()
+                    nodosP.push(dataP)
+                    resolve(nodosP)
+                });
+            });
+        
+        });
+    }
+
+//--------------------------------------------SELECCION DEL TODOS LOS DATOS DEL NODO SEMAFOROS--------------------------------------
+    function selectS(ruta){
+        const db = getDatabase();
+        const dbRef = ref(db, ruta);
+        return new Promise((resolve, reject) => {
+            onValue(dbRef, (snapshot) => {
+                snapshot.forEach((childSnapshot) => {
+                    
+                    var dataS = childSnapshot.val()
+                    nodosS.push(dataS)
+                    resolve(nodosS)
+                });
+            });
+        
+        });
+    }
+    
+    var nodoP = await selectP('Paso de Peatones/')
+    nodosP.push(nodoP) //se rellena una array con todos los datos de la DB
+    
+    var nodoS = await selectS('Semaforos/')
+    nodosS.push(nodoS) //se rellena una array con todos los datos de la DB
+
+    //console.log(nodosS)
+  
+
+
+//--------------------------------------------Funcion para ver cuantos PEATONES pasan por ese punto---------------------------------------
+    function peatonesDia(){
+        for (var i = 0; i < nodosP.length; i++) {
+            var dia = nodosP[i].Dia;
+            if (contadorPeatonesDia[dia]) {
+                contadorPeatonesDia[dia]++;
+            } else {
+                contadorPeatonesDia[dia] = 1;
+            }
+        }
+        console.log("Contador por dia",contadorPeatonesDia);
+    }
+
+//--------------------------------------------Funcion para ver cuantos COCHES pasan por ese punto---------------------------------------
+    function cochesDia(){
+        for (var i = 0; i < nodosS.length; i++) {
+            var dia = nodosS[i].Dia;
+            if (nodosS[i].Tramo == 1){
+                if (contadorCochesDiaT1[dia] ) {
+                    contadorCochesDiaT1[dia]++;
+                } else {
+                    contadorCochesDiaT1[dia] = 1;
+                }
+            }else if (nodosS[i].Tramo == 2){
+                if (contadorCochesDiaT2[dia] ) {
+                    contadorCochesDiaT2[dia]++;
+                } else {
+                    contadorCochesDiaT2[dia] = 1;
+                }
+            }
+        }
+
+        console.log("Contador por dia tramo 1",contadorCochesDiaT1);
+        console.log("Contador por dia tramo 2",contadorCochesDiaT2);
+    }
+
+//---------------------------------------------------se instancia los datos, se entrena y se obtiene los resultados para peatones------------------------
+    function trainingP(){
+
+        //console.log(nodosP.length)
+        var datos = []
+
+        let net = new brain.NeuralNetwork();
+        for (var dia in contadorPeatonesDia) {
+            if (dia != "undefined"){
+                if (contadorPeatonesDia[dia]>= 6){ //Si se tienen mas de 6 peatones en un dia estara transitado
+                    datos.push ({
+                    "input":{"Dia":dia}, 
+                    "output":{"Transitado":1}
+                })
+                }else{ //Si no, no lo estara
+                    datos.push ({ 
+                    "input":{"Dia":dia}, 
+                    "output":{"Transitado":0}
+                })
+                }
+            }
+        }
+        for (var i = 0; i <  Math.floor(nodosP.length/15); i++) { //meten valores aleatorios que no estan en la base de datos para entrenar    
+            var fecha = new Date(2023,6,NumerosAleatorios(1, 30));
+            fecha.setHours(NumerosAleatorios(0, 60),NumerosAleatorios(0, 60));
+
+            if (nodosS[i].Fecha != fecha){//si la fecha no esta en la db significa que no habido un peaton en ese momento 
+                datos.push({
+                    "input":{ "Dia":fecha.getDay()},
+                    "output":{"Transitado":0}
+                })
+            }
+        }
+        
+        //console.log(datos)
+        const trainingData = datos.map(item => ({
+            input: item.input,
+            output: item.output
+        }));
+        
+        const stats = net.train(trainingData);//se entrena la red neuronal
+        //console.log ("estadisticas", stats);
+        
+        return net //Se devuelve la red neuronal entrenada
+        
+    }
+
+
+//---------------------------------------------------se instancia los datos, se entrena y se obtiene los resultados para SEMAFOROS------------------------
+    function trainingS(){
+        var sensores = [13,24]
+        
+        var datos = []
+        //console.log(nodosS.length)
+        let net = new brain.NeuralNetwork();
+        for (var dia in contadorCochesDiaT1) {
+            if (dia != "undefined"){
+                if (contadorCochesDiaT1[dia]>= 4){ //Si se tienen mas de 4 Coches en un dia habra trafico
+                    datos.push ({
+                        "input":{"Dia":dia, "Tramo":1},
+                        "output":{"Coches":1}
+                    })
+                }else{ //Si no, no lo habra
+                    datos.push ({
+                        "input":{"Dia":dia, "Tramo":1},
+                        "output":{"Coches":0}
+                    })
+                }
+            }
+           
+        }
+
+        for (var dia in contadorCochesDiaT2) {
+            if (dia != "undefined"){
+                if (contadorCochesDiaT2[dia]>= 4){ //Si se tienen mas de 4 Coches en un dia habra trafico
+                    datos.push ({
+                        "input":{"Dia":dia, "Tramo":2},
+                        "output":{"Coches":1}
+                    })
+                }else{ //Si no, no lo habra
+                    datos.push ({
+                        "input":{"Dia":dia, "Tramo":2},
+                        "output":{"Coches":0}
+                    })
+                }
+            }
+           
+        }
+            
+        for (var i = 0; i <  Math.floor(nodosS.length/10); i++) { //meten valores aleatorios que no estan en la base de datos para entrenar    
+            var fecha = new Date(2023,6,NumerosAleatorios(1, 30));
+            fecha.setHours(NumerosAleatorios(0, 60),NumerosAleatorios(0, 60));
+
+            if (nodosS[i].Fecha != fecha){//si la fecha no esta en la db significa que no habido un peaton en ese momento 
+                datos.push({
+                    "input":{ "Dia":fecha.getDay(), "Tramo":sensores[NumerosAleatorios(0,2)]},
+                    "output":{"Coches":0}
+                })
+            }
+        }
+
+        console.log(datos)
+
+
+        const trainingData = datos.map(item => ({
+            input: item.input,
+            output: item.output
+        }));
+        
+        const stats = net.train(trainingData);//se entrena la red neuronal
+        console.log ("estadisticas", stats);
+        
+        return net //Se devuelve la red neuronal entrenada
+        
+    }
+    
+//---------------------------------------------------Se predice como de transitado de PEATONES va estar ese DIA------------------------
+    function prediccionDiaP(net){ 
+        
+        let resultadoP = net.run({ "Dia":hoy})
+        console.log("probabilidades de que este transitado", resultadoP);// probabilidad de que ocurra
+
+        return resultadoP
+    }
+
+//---------------------------------------------------Se predice como de transitado de PEATONES va estar ese SEMANA------------------------
+    function prediccionSemanalP(net){
+        for (var i = 0; i < 7; i++) {
+            
+            let resultado = net.run({ "Dia":hoy+i})
+            resultadosSemanaP.push(resultado)
+        }
+        console.log (resultadosSemanaP)
+        return resultadosSemanaP
+    }
+
+//---------------------------------------------------Se predice como de transitado de COCHES va estar ese DIA en el TRAMO1------------------------
+    function prediccionDiaSTramo1(net){
+        let resultadoSTramo1 = net.run({"Dia":hoy, "Tramo":1})
+        console.log("probabilidades de que este con trafico", resultadoSTramo1);// probabilidad de que ocurra
+        return resultadoSTramo1
+    }
+
+//---------------------------------------------------Se predice como de transitado de COCHES va estar esa SEMANA en el TRAMO1------------------------
+    function prediccionSemanalSTramo1(net){
+
+        for (var i = 0; i < 7; i++) {
+            let resultado = net.run({"Dia":hoy+i, "Tramo":1})
+            resultadosSemanalSTramo1.push(resultado)
+        }
+        console.log (resultadosSemanalSTramo1)
+        return resultadosSemanalSTramo1
+    }
+
+//---------------------------------------------------Se predice como de transitado de COCHES va estar ese DIA en el TRAMO2------------------------
+    function prediccionDiaSTramo2(net){
+        
+        let resultadoSTramo2 = net.run({"Dia":hoy, "Tramo":2})
+        console.log("probabilidades de que este con trafico", resultadoSTramo2);// probabilidad de que ocurra
+        return resultadoSTramo2
+    }
+
+//---------------------------------------------------Se predice como de transitado de COCHES va estar esa SEMANA en el TRAMO2------------------------
+    function prediccionSemanalSTramo2(net){
+
+        for (var i = 0; i < 7; i++) {
+            let resultado = net.run({"Dia":hoy+i, "Tramo":2})
+            resultadosSemanalSTramo2.push(resultado)
+        }
+        console.log (resultadosSemanalSTramo2)
+        return resultadosSemanalSTramo2
+    }
+
+//---------------------------------------------------LLamada a las funciones -------------------------------------------------------
+    let trainetNet;//Red neuronal declarada
+
+    cochesDia()
+    peatonesDia()
+
+    var net = trainingP()
+    resultadoP= prediccionDiaP (net)
+    resultadosSemanaP = prediccionSemanalP(net)
+    
+    var net2 = trainingS()
+    resultadoSTramo1 = prediccionDiaSTramo1 (net2)
+    resultadosSemanalSTramo1 = prediccionSemanalSTramo1(net2)
+
+    resultadoSTramo2 = prediccionDiaSTramo2(net2)
+    resultadosSemanalSTramo2 = prediccionSemanalSTramo2(net2)
+
+    
+
+    
+
+    firebase.initializeApp( {
+    apiKey: "AIzaSyCi_RJboqrKT4GL2PGHxtsW6pCxTGLl1BU",
+    authDomain: "base2-9c182.firebaseapp.com",
+    projectId: "base2-9c182",
+    storageBucket: "base2-9c182.appspot.com",
+    messagingSenderId: "10360052669",
+    appId: "1:10360052669:web:3f881cf35279fdf719d0d4"
+    })
+
+      // Initialize Firebase
+    const db2 = firebase.firestore();
+
+
+//---------------------------------------------------Se inserta en la BdD la Prediccion de PEATONES------------------------  
+    function insertarPrediccionP(resultadoP, resultadosSemanaP){
+        var collectionRef = db2.collection('PrediccionPeatones');
+
+        var elemento = {
+            Semana: resultadosSemanaP,
+            prediccionDia: resultadoP,
+            fecha: fechaActual
+        };
+
+        collectionRef.add(elemento)
+        .then((docRef) => {
+            console.log('Documento agregado con ID:', docRef.id);
+        })
+        .catch((error) => {
+            console.error('Error al agregar el documento:', error);
+        });
+
+    }
+
+    
+//---------------------------------------------------Se inserta en la BdD la Prediccion de SEMAFOROS en el TRAMO 1 ------------------------  
+    function insertarPrediccionSTramo1(resultadoSTramo1, resultadosSemanalSTramo1){
+        var collectionRef = db2.collection('PrediccionSemaforosTramo1');
+
+        var elemento = {
+            Semana: resultadosSemanalSTramo1,
+            prediccionDia: resultadoSTramo1,
+            fecha: fechaActual
+        };
+
+        collectionRef.add(elemento)
+        .then((docRef) => {
+            console.log('Documento agregado con ID:', docRef.id);
+        })
+        .catch((error) => {
+            console.error('Error al agregar el documento:', error);
+        });
+
+    }
+
+//---------------------------------------------------Se inserta en la BdD la Prediccion de SEMAFOROS en el TRAMO 1 ------------------------  
+    function insertarPrediccionSTramo2(resultadoSTramo2, resultadosSemanalSTramo2){
+        var collectionRef = db2.collection('PrediccionSemaforosTramo2');
+
+        var elemento = {
+            Semana: resultadosSemanalSTramo2,
+            prediccionDia: resultadoSTramo2,
+            fecha: fechaActual
+        };
+
+        collectionRef.add(elemento)
+        .then((docRef) => {
+            console.log('Documento agregado con ID:', docRef.id);
+        })
+        .catch((error) => {
+            console.error('Error al agregar el documento:', error);
+        });
+
+    }
+
+    //insertarPrediccionP(resultadoP, resultadosSemanaP)
+    //insertarPrediccionSTramo1(resultadoSTramo1, resultadosSemanalSTramo1)
+    //insertarPrediccionSTramo2(resultadoSTramo2, resultadosSemanalSTramo2)
+   
+   
+
+    </script>
+</head>
+<body>
+    
+</body>
+</html>
