@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prueba Firebse</title>
+    <style>label{display: inline-block; width:80px;}
+    input,select{width:120px;}
+    </style>
+
+</head>
+<body>
+
+  
+
+    <hr>
+    <button id="insertar">insertar</button> 
+    <button id="select">select</button>
+    <button id="actualizar">update</button> 
+    <button id="borrar">delete</button>
+    
+
+    <script type="module">
+        // Import the functions you need from the SDKs you need
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.14.0/firebase-app.js";
+        // TODO: Add SDKs for Firebase products that you want to use
+        // https://firebase.google.com/docs/web/setup#available-libraries
+      
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyAaua17IgfeQY6Ji7svpyCofhWc-oecwqI",
+            authDomain: "basededatos-f1968.firebaseapp.com",
+            databaseURL: "https://basededatos-f1968-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "basededatos-f1968",
+            storageBucket: "basededatos-f1968.appspot.com",
+            messagingSenderId: "558794073723",
+            appId: "1:558794073723:web:0490583584bf5ce831e4de",
+            measurementId: "G-80G882XZZB"
+        };
+      
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        
+        // Introducir las funciones para editar la base de datos
+        import { getAuth } from 'https://www.gstatic.com/firebasejs/9.14.0/firebase-auth.js'
+        import { getFirestore } from 'https://www.gstatic.com/firebasejs/9.14.0/firebase-firestore.js'
+        import {getDatabase, ref, set,get, child, update, remove, onValue,  orderByChild, DataSnapshot, query, equalTo} from "https://www.gstatic.com/firebasejs/9.14.0/firebase-database.js";
+        
+        //conexion a la database
+        const db = getDatabase();
+
+        //-----------------------------------declaracion de variables----------------------------------------------------------------
+        function NumerosAleatorios(min, max) {
+          return Math.round(Math.random() * (max - min) + min);
+        }
+        
+        //PEATONES
+        var nodo;
+        var insertar = document.getElementById("insertar");
+        function vacio(identificador){
+            
+            if (identificador.value.length == 0){//comprobar si esta vacio
+                console.log("No puede estar vacio el identificador de ", identificador)
+                return false
+            }else{
+                return true
+            }
+        }
+
+//------------------------------------------funcion insertar Elementos------------------------------------------
+        function insertDataP(){
+            var diaP = NumerosAleatorios(1, 12)
+            var fechaP = new Date(2023,5,diaP)
+            var fechaFinal = fechaP.toISOString()
+            //console.log("dia ", diaP, "fecha= ", fechaFinal)
+            var IDSP =  NumerosAleatorios(0, 1500); // se pueden de 0 hasta mil
+       
+            //if (vacio(IDSP)){
+                get(child(ref(db), "Paso de Peatones/" + IDSP)).then ((snapshot)=>{
+                    if(!snapshot.exists()){
+                        console.log("Se inserta")
+                        set(ref(db, "Paso de Peatones/"+ IDSP), {
+                            Dia: diaP-1,
+                            Fecha: fechaFinal
+                        })
+                        .then(()=>{
+                        })
+                        .catch((error)=>{
+                            alert("Error"+error);
+                        });
+                    }else{
+                            console.log("El suceso ya existe peatones")
+                    }
+                })
+                          
+            }
+        
+
+        
+        
+        for (var i = 0; i  < 10; i++) {
+            insertDataS()
+        }
+
+//----------------------------------------
+        function insertDataS(){
+            var diaS = NumerosAleatorios(1, 30)
+            var fechaS = new Date(2022,4,diaS);
+            var fechaFinal = fechaS.toISOString();       
+            var IDSP =  NumerosAleatorios(0, 1500); // se pueden de 0 hasta 1500
+            var Tramo = NumerosAleatorios(1, 2);
+       
+            //if (vacio(IDSP)){
+                get(child(ref(db), "Semaforos/" + IDSP)).then ((snapshot)=>{
+                    if(!snapshot.exists()){
+                        console.log("Se inserta")
+                        set(ref(db, "Semaforos/"+ IDSP), {
+                            Coches: 1,
+                            Fecha: fechaFinal,
+                            Dia: diaS-1,
+                            Tramo: 1
+                        })
+                        .then(()=>{
+                        })
+                        .catch((error)=>{
+                            alert("Error"+error);
+                        });
+                    }else{
+                        console.log("El suceso ya existe peatones")
+                    }
+                })
+            } 
+        
+    </script>
+
+</body>
+</html>
