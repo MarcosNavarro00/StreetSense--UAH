@@ -1,6 +1,5 @@
 # StreetSense: Sistema de Monitoreo y Predicción en Tiempo Real de Datos de una Vía Pública
 
-![StreetSense Logo](https://example.com/streetsense-logo.png)
 
 Este repositorio es el hogar del proyecto StreetSense, un sistema completo de monitoreo y predicción en tiempo real de datos de una vía pública. StreetSense utiliza una combinación de tecnologías y herramientas para capturar, comunicar, analizar y presentar información vital sobre el tráfico y la seguridad en las vías públicas.
 
